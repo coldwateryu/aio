@@ -11,24 +11,28 @@ def fib(n):
 
 
 async def handle(reader, writer):
-    data = await reader.read(100)
-    message = data.decode()
-    addr = writer.get_extra_info('peername')
-    print("Received %r from %r" % (message, addr))
+    while True:
+        data = await reader.read(100)
+        message = data.decode()
+        addr = writer.get_extra_info('peername')
+        print("Received %r from %r" % (message, addr))
 
-    if message['command'] == "fib":  # moved to before the `input` call
-        response = fib(int(message['payload']))
-    else:
-        response = 'only fib here bitch'
+        if isinstance(message, str):
+            response = message
+        elif all((isinstance(message, dict), 'command' in message, message['command'] == "fib")):
+            response = fib(int(message['payload']))
+        else:
+            response = 'only fib here bitch'
 
-    print("Send: %r" % message)
-    writer.write(response)
-    await writer.drain()
+        print("Send: %r" % message)
+        writer.write(response.encode(encoding='utf-8'))
+        await writer.drain()
 
-    print("Close the client socket")
-    writer.close()
+    # print("Close the client socket")
+    # writer.close()
 
 loop = asyncio.get_event_loop()
+loop.set_debug(enabled=True)
 coro = asyncio.start_server(handle, '127.0.0.1', 8888, loop=loop)
 server = loop.run_until_complete(coro)
 
